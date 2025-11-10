@@ -10,10 +10,20 @@ def findReflexiveVertices(polygons):
     # You should return a list of (x,y) values as lists, i.e.
     # vertices = [[x1,y1],[x2,y2],...]
 
-    for p in range (0, len(polygons)):
+    for p in range (0, len(polygons)): #get to independed vetecies
         current = polygons[p]
-        
-    
+        for i in range (0, len(current)):
+            previous = current[(i - 1) % len(current)]
+            current_vertex = current[i]
+            next_vertex = current[(i + 1) % len(current)]
+            
+            #Solve for reflexive angle
+            ax = current_vertex[0] - previous[0]
+            ay = current_vertex[1] - previous[1]
+            bx = next_vertex[0] - current_vertex[0]
+            by = next_vertex[1] - current_vertex[1]
+            
+
     return vertices
 
 '''
