@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 
 '''
 Report reflexive vertices
@@ -18,12 +19,23 @@ def findReflexiveVertices(polygons):
             next_vertex = current[(i + 1) % len(current)]
             
             #Solve for reflexive angle
-            ax = current_vertex[0] - previous[0]
-            ay = current_vertex[1] - previous[1]
+
+            #create vector a and b
+            ax = previous[0] - current_vertex[0]
+            ay = previous[1] - current_vertex[1]
             bx = next_vertex[0] - current_vertex[0]
             by = next_vertex[1] - current_vertex[1]
             
+            #Dot of two vecotors A dot B = |A||B|cos(theta)
+            # theta = arccos((A dot B)/(|A||B|))
+            aDotB = ax * bx + ay * by
+            magA = np.sqrt(ax**2 + ay**2)
+            magB = np.sqrt(bx**2 + by**2)
+            theta = np.arccos(aDotB / (magA * magB))
+            if theta > np.pi: #angle is reflexive
+                vertices.append(current_vertex)
 
+    print (vertices)
     return vertices
 
 '''
