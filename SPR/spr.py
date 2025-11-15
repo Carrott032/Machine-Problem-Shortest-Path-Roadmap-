@@ -26,16 +26,10 @@ def findReflexiveVertices(polygons):
             bx = next_vertex[0] - current_vertex[0]
             by = next_vertex[1] - current_vertex[1]
             
-            #Dot of two vecotors A dot B = |A||B|cos(theta)
-            # theta = arccos((A dot B)/(|A||B|))
-            aDotB = ax * bx + ay * by
-            magA = np.sqrt(ax**2 + ay**2)
-            magB = np.sqrt(bx**2 + by**2)
-            theta = np.arccos(aDotB / (magA * magB))
-            if theta > np.pi: #angle is reflexive
+            z = ax * by - ay * bx #Use Cross product to determine reflex angle
+            if z > 0: #angle is reflexive
                 vertices.append(current_vertex)
 
-    print (vertices)
     return vertices
 
 '''
@@ -57,6 +51,54 @@ def computeSPRoadmap(polygons, reflexVertices):
     # {1: [[2, 5.95], [3, 4.72]], 2: [[1, 5.95], [5,3.52]], ... }
     #
     # The vertex labels used here should start from 1
+
+    # label reflexive verticies
+    for i in range (0, len(reflexVertices)):
+        vertexMap[i + 1] = reflexVertices[i]
+        for j in range (0, len(reflexVertices)):
+            if i != j:
+                #check if legal edge btween reflexive vertices
+                point1 = reflexVertices[i]
+                point2 = reflexVertices[j]
+                legalEdge = True
+
+                for p in range (0, len(polygons)):
+                    # chek collisions 
+                    currPolygon = polygons[p]
+
+                    #break down to each edge of polygon
+                    for k in range (0, len(currPolygon)):
+                        nextK = (k + 1) % len(currPolygon)
+
+                        # Skip if the points are right next to each other on polygon (They make a legal edge)
+                        if (point1 == currPolygon[k] or point1 == currPolygon[nextK] or point2 == currPolygon[k] or point2 == currPolygon[nextK]):
+                            continue
+                        
+                        #line intersection check 
+
+                        # check parallel using cross product
+                        cross = (point2[0] - point1[0]) * (currPolygon[nextK][1] - currPolygon[k][1])- (point2[1] - point1[1]) * (currPolygon[nextK][0] - currPolygon[k][0])
+                        if cross == 0:
+                            continue #parallel lines mean they cannot intersect
+                        
+                        # use parametric equations to solve for intersection
+                        ua = ((currPolygon[nextK][0] - currPolygon[k][0]) * (point1[1] - currPolygon[k][1]) - (currPolygon[nextK][1] - currPolygon[k][1]) * (point1[0] - currPolygon[k][0])) / cross
+                        ub = ((point2[0] - point1[0]) * (point1[1] - currPolygon[k][1]) - (point2[1] - point1[1]) * (point1[0] - currPolygon[k][0])) / cross
+
+                        if ua >= 0 and ua <= 1 and ub >= 0 and ub <= 1:
+                            legalEdge = False
+                            break
+
+                if legalEdge:
+                    dist = np.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
+
+                    #create definition if not exists
+                    if (i + 1) not in adjacencyListMap:
+                        adjacencyListMap[i + 1] = []
+
+                    adjacencyListMap[i + 1].append([j + 1, round(float(dist), 2)])
+                    
+        
     
     return vertexMap, adjacencyListMap
 
@@ -117,6 +159,7 @@ if __name__ == "__main__":
             polygon.append(list(map(float, xys[p].split(','))))
         polygons.append(polygon)
 
+    
     # Print out the data
     print ("Pologonal obstacles:")
     for p in range(0, len(polygons)):
