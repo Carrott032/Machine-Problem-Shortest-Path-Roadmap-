@@ -66,6 +66,32 @@ def computeSPRoadmap(polygons, reflexVertices):
                     # chek collisions 
                     currPolygon = polygons[p]
 
+                    if point1 in currPolygon and point2 in currPolygon:
+                        index1 = currPolygon.index(point1)
+                        index2 = currPolygon.index(point2)
+                        
+                        # add each vertex in between points
+                        n = len(currPolygon)
+                        
+                        forward = []
+                        for k in range(1, (index2 - index1) % n):
+                            forward.append((index1 + k) % n)
+                        backward = []
+                        for k in range(1, (index1 - index2) % n):
+                            backward.append((index2 + k) % n)
+                        
+                        # check if any vertex in between is reflexive 
+                        forward_blocked = any(currPolygon[i] in reflexVertices for i in forward)
+                        backward_blocked = any(currPolygon[i] in reflexVertices for i in backward)
+                        
+
+                        #if none are reflexive then the edge is valid 
+                        if forward_blocked and backward_blocked:
+                            legalEdge = False
+                            break
+                        else:
+                            continue
+
                     #break down to each edge of polygon
                     for k in range (0, len(currPolygon)):
                         nextK = (k + 1) % len(currPolygon)
