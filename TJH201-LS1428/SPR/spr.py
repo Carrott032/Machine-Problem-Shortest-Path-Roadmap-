@@ -40,13 +40,12 @@ def findReflexiveVertices(polygons):
                 x2, y2 = currPolygon[(j + 1) % numVertices]
                 signOfPolygon += x1 * y2 - x2 * y1
                     
-            if (signOfPolygon > 0 and crossProduct < 0) or (signOfPolygon < 0 and crossProduct > 0):
+            if not ( (signOfPolygon > 0 and crossProduct < 0) or (signOfPolygon < 0 and crossProduct > 0)):
                 vertices.append(currPolygon[i])
 
             i += 1
         a += 1
     return vertices
-
 
 
 '''
@@ -80,7 +79,7 @@ def computeSPRoadmap(polygons, reflexVertices):
                 legalEdge = True
 
                 for p in range (0, len(polygons)):
-                    # chek collisions 
+                    # check collisions 
                     currPolygon = polygons[p]
 
                     if point1 in currPolygon and point2 in currPolygon:
@@ -140,9 +139,7 @@ def computeSPRoadmap(polygons, reflexVertices):
                         adjacencyListMap[i + 1] = []
 
                     adjacencyListMap[i + 1].append([j + 1, round(float(dist), 2)])
-                    
-        
-    
+                
     return vertexMap, adjacencyListMap
 
 
@@ -151,7 +148,51 @@ def computeSPRoadmap(polygons, reflexVertices):
 Perform uniform cost search 
 '''
 def uniformCostSearch(adjListMap, start, goal):
-    
+    path = []
+    pathLength = 0
+    frontier = [(0.0, start)] # Array of (cost, vertex)
+    parent = {start: None} # Dictionary for child -> parent
+    cost = {start: 0.0} # Dictionary for cost
+    visited = [] # List of all the visited nodes
+
+    def leastCostIndex(open_list):
+        bestIndex = 0
+        for i in range(1, len(open_list)):
+            if open_list[i][0] < open_list[bestIndex][0]:
+                bestIndex = i
+        return bestIndex
+
+
+
+    while frontier:
+        index = leastCostIndex(frontier)
+        theCost, n = frontier.pop(index)
+
+        if n in visited:
+            continue # disregard if we already visited it
+
+        if n == goal:
+            reversePath = []
+            p = n
+            while p is not None:
+                reversePath.append(p)
+                p = parent[p]
+            path = reversePath[::-1] 
+            return path, theCost
+
+        neighbors = adjListMap.get(n, [])
+        for a in neighbors:
+            v = a[0]
+            w = a[1]
+            newCost = theCost + w
+            old = cost.get(v, None)
+            if old is None or newCost < old:
+                cost[v] = newCost
+                parent[v] = n
+                frontier.append((newCost, v))
+
+        visited.append(n)
+
 
     return path, pathLength
 
@@ -172,13 +213,75 @@ def updateRoadmap(polygons, vertexMap, adjListMap, x1, y1, x2, y2):
     startLabel = 0
     goalLabel = -1
 
-    # Your code goes here. Note that for convenience, we 
-    # let start and goal have vertex labels 0 and -1,
-    # respectively. Make sure you use these as your labels
-    # for the start and goal vertices in the shortest path
-    # roadmap. Note that what you do here is similar to
-    # when you construct the roadmap. 
-    
+    keys = list(adjListMap.keys())
+    keyLen = len(keys)
+    for i in range(keyLen):
+        node = keys[i]
+        neighborList = adjListMap[node]
+
+        d = []
+        for k in range(len(neighborList)):
+            d.append([neighborList[k][0], neighborList[k][1]])
+
+        updatedALMap[node] = d
+
+    start = [x1, y1]
+    goal  = [x2, y2]
+    vertexMap[startLabel] = start
+    vertexMap[goalLabel]  = goal
+
+    def noCollisions(p1, p2):
+
+        def segmentsIntersect(a, b, c, d): 
+            x1, y1 = a
+            x2, y2 = b
+            x3, y3 = c
+            x4, y4 = d
+            
+            if ((x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3)) == 0.0:
+                return False
+            if a == c or a == d or b == c or b == d:
+                return False
+            e = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3))
+            f = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / ((x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3))
+
+            return 0.0 <= e <= 1.0 and 0.0 <= f <= 1.0
+
+        for p in polygons:
+            idx = 0
+            while idx < len(p):
+                if segmentsIntersect(p1, p2, p[idx], p[(idx + 1) % len(p)]):
+                    return False
+                idx += 1
+
+        return True
+
+    def addEdgeBetweenVertices(v1, v2, v1Index, v2Index):
+        length = round(float(np.sqrt((v1[0] - v2[0])*(v1[0] - v2[0]) + (v1[1] - v2[1])*(v1[1] - v2[1]))), 2)
+        if v1Index not in updatedALMap:
+            updatedALMap[v1Index] = []
+        if v2Index not in updatedALMap:
+            updatedALMap[v2Index] = []
+        updatedALMap[v1Index].append([v2Index, length])
+        updatedALMap[v2Index].append([v1Index, length])
+
+
+
+    keys2 = list(vertexMap.keys())
+    i = 0
+    while i < len(keys2):
+        if keys2[i] != startLabel and keys2[i] != goalLabel:
+            x1, x2 = goal
+            if noCollisions(goal, vertexMap[keys2[i]]):
+                addEdgeBetweenVertices(goal, vertexMap[keys2[i]], goalLabel, keys2[i])
+            x1, x2 = start
+            if noCollisions(start, vertexMap[keys2[i]]):
+                addEdgeBetweenVertices(start, vertexMap[keys2[i]], startLabel, keys2[i])
+        i += 1
+
+    if noCollisions(start, goal): #we go straight to the end
+        addEdgeBetweenVertices(start, goal, startLabel, goalLabel)
+
     return startLabel, goalLabel, updatedALMap
 
 if __name__ == "__main__":
